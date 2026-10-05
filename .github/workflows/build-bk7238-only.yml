@@ -1,0 +1,40 @@
+name: Build BK7238 only
+
+on:
+  push:
+    branches:
+      - CO400A-A004-battery
+    paths:
+      - '.github/workflows/build-bk7238-only.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  build:
+    name: Build OpenBK7238 default
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Source checkout
+        uses: actions/checkout@v5
+
+      - name: Set version
+        id: version
+        shell: bash
+        run: |
+          BRANCHTRANSLATED=$(echo "${GITHUB_REF_NAME}" | tr '/' '_')
+          echo "value=${BRANCHTRANSLATED}_$(git rev-parse --short=12 HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Run make
+        run: make APP_VERSION=${{ steps.version.outputs.value }} APP_NAME=OpenBK7238 VARIANT="default" OpenBK7238
+
+      - name: Save BK7238 build assets
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ env.APP_NAME }}_${{ steps.version.outputs.value }}_OpenBK7238
+          path: output/${{ steps.version.outputs.value }}/OpenBK7238*
+          if-no-files-found: error
