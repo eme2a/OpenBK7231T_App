@@ -42,9 +42,33 @@ void Test_Battery_SmokeSensor() {
 	// assert: current ,expected, max difference
 	SELFTEST_ASSERT_FLOATCOMPAREEPSILON(Battery_lastreading(OBK_BATT_LEVEL), 0, 5.0f);
 }
+
+void Test_Battery_SwitchedDirectADC() {
+	// Some battery devices switch the ADC sampling circuit even though the
+	// measurement itself has no voltage divider (divider = 1).
+	SIM_ClearOBK(0);
+
+	PIN_SetPinRoleForPinIndex(20, IOR_BAT_Relay);
+	PIN_SetPinRoleForPinIndex(23, IOR_BAT_ADC);
+
+	CMD_ExecuteCommand("startDriver Battery", 0);
+	CMD_ExecuteCommand("Battery_Setup 2732 3132 1 3600 4096", 0);
+
+	// 3212 ADC counts at 3.6 V reference corresponds to about 2823 mV / 23%.
+	SIM_SetIntegerValueADCPin(23, 3212);
+	Simulator_Force_Batt_Measure();
+
+	SELFTEST_ASSERT_FLOATCOMPAREEPSILON(Battery_lastreading(OBK_BATT_VOLTAGE), 2823, 5.0f);
+	SELFTEST_ASSERT_FLOATCOMPAREEPSILON(Battery_lastreading(OBK_BATT_LEVEL), 23, 2.0f);
+	// The sampling switch must not be left powered after the conversion.
+	SELFTEST_ASSERT_PIN_BOOLEAN(20, false);
+}
+
 void Test_Battery() {
 	Test_Battery_SmokeSensor();
+	Test_Battery_SwitchedDirectADC();
 
 }
 
 #endif
+
